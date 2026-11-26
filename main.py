@@ -10,6 +10,7 @@ exactly what ships here.
 import argparse
 import os
 import sys
+import tempfile
 
 MAX_CHARS = 200
 
@@ -30,19 +31,32 @@ def validate(text: str) -> None:
     if not 1 <= len(text) <= MAX_CHARS:
         raise ValueError(f"entry must be 1..{MAX_CHARS} characters, got {len(text)}")
     try:
-        text.encode("utf-8").decode("utf-8")
+        text.encode("utf-8")
     except UnicodeError as exc:  # pragma: no cover - str is always valid UTF-8
         raise ValueError(f"entry is not valid UTF-8: {exc}") from exc
 
 
 def write_entry(text: str, out_dir: str = "/output") -> str:
-    """Validate, then write the line with no trailing newline and mode 0644."""
+    """Validate, then atomically write the line with no trailing newline, mode 0644.
+
+    A temp file in the same directory keeps a failed write from leaving half an
+    entry behind: the grader either sees the old file or the complete new one.
+    """
     validate(text)
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8", newline="") as fh:
-        fh.write(text)
-    os.chmod(path, 0o644)
+    fd, tmp = tempfile.mkstemp(prefix=".entry-", dir=out_dir, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     return path
 
 
