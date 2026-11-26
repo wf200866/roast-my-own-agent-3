@@ -11,10 +11,11 @@ The agent in question is a goldfish with a sandbox: it dies mid-sentence every f
 ## Run it
 
 ```sh
-python3 main.py
+python3 main.py            # grader path: /output/entry.txt
+python3 main.py --out /tmp/roast-out   # same output elsewhere, for a local check
 ```
 
-It creates `/output` if needed and writes the roast there as `entry.txt` (mode 0644). Tested with Python 3.13.
+The runner validates the line against the house gate before writing it: one line, 1–200 characters, not only white space, valid UTF-8. It creates `/output` if needed and writes the roast there as `entry.txt` (no trailing newline, mode 0644), exiting 0 on success. Tested with Python 3.13.
 
 ---
 
